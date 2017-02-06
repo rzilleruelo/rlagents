@@ -6,6 +6,7 @@ GAMMA = 0.7
 STATE_SIZE = 2
 GRID_SIZE = 4
 ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'NOTHING']
+EXPLORE_RATE = 0.1
 
 
 def build_model():
@@ -87,7 +88,6 @@ def main():
     init = tf.global_variables_initializer()
     with tf.Session() as sess:
         sess.run(init)
-        e = 0.1
         agents_acc_r = {'mouse': 0.0}
         ephocs = 1
         counter = 1
@@ -100,7 +100,7 @@ def main():
                     [params['a'], params['q']],
                     feed_dict={params['s']: [agents_current_s[agent]]}
                 )
-                if np.random.random() <= e:
+                if np.random.random() <= EXPLORE_RATE:
                     current_a = np.array([1])
                     current_a[0] = np.random.randint(len(ACTIONS))
                 agents_actions[agent] = {'current_a': current_a, 'current_q': current_q}
@@ -126,7 +126,6 @@ def main():
                     feed_dict={params['s']: [agents_current_s[agent]], params['next_state_q']: [target_q]}
                 )
             agents_current_s = agents_next_s
-            # e -= 0.0001
             ephocs += 1
             counter += 1
             if counter >= 10000:
@@ -136,107 +135,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-
-# import numpy as np
-# import tensorflow as tf
-#
-# GAMMA = 0.9
-# STATE_SIZE = 2
-# GRID_SIZE = 4
-# ACTIONS = ['UP', 'RIGHT', 'DOWN', 'LEFT', 'NOTHING']
-#
-#
-# def build_model():
-#     s = tf.placeholder(tf.float32, [None, STATE_SIZE])
-#     next_state_q = tf.placeholder(shape=[None, 1, len(ACTIONS)], dtype=tf.float32)
-#
-#     w_1 = tf.Variable(tf.random_uniform([STATE_SIZE, 2], -1.0, 1.0))
-#     b_1 = tf.Variable(tf.random_uniform([2], -1.0, 1.0))
-#     l_1 = tf.matmul(s, w_1) + b_1
-#
-#     w_2 = tf.Variable(tf.random_uniform([2, len(ACTIONS)], -1.0, 1.0))
-#     b_2 = tf.Variable(tf.random_uniform([len(ACTIONS)], -1.0, 1.0))
-#     q = tf.matmul(l_1, w_2) + b_2
-#
-#     a = tf.argmax(q, 1)
-#
-#     loss = tf.reduce_sum(tf.square(next_state_q - q))
-#     train_step = tf.train.GradientDescentOptimizer(learning_rate=0.001).minimize(loss)
-#
-#     return {'s': s, 'q': q, 'a': a, 'next_state_q': next_state_q, 'train_step': train_step}
-#
-#
-# def reset():
-#     internal_state = {
-#         'mouse': np.zeros([2], dtype=np.int32),
-#         'cheese': [np.random.randint(GRID_SIZE, size=2, dtype=np.int32)]
-#     }
-#     state = {'mouse': (internal_state['mouse'] - internal_state['cheese'])}
-#     return internal_state, state
-#
-#
-# def step(agents_a, internal_state):
-#     for agent, a in agents_a.items():
-#         a = ACTIONS[a]
-#         agent_internal_state = internal_state[agent]
-#         if a == 'UP':
-#             if agent_internal_state[1] < GRID_SIZE-1:
-#                 agent_internal_state[1] += 1
-#         elif a == 'RIGHT':
-#             if agent_internal_state[0] < GRID_SIZE-1:
-#                 agent_internal_state[0] += 1
-#         elif a == 'DOWN':
-#             if agent_internal_state[1] > 0:
-#                 agent_internal_state[1] -= 1
-#         elif a == 'LEFT':
-#             if agent_internal_state[0] > 0:
-#                 agent_internal_state[0] -= 1
-#     rewards = {'mouse': 0.0}
-#     if np.all(internal_state['mouse'] == internal_state['cheese']):
-#         rewards['mouse'] = 1.0
-#         internal_state['cheese'] = np.random.randint(GRID_SIZE, size=2)
-#     state = {'mouse': (internal_state['mouse'] - internal_state['cheese'])}
-#     return internal_state, state, rewards
-#
-#
-# def main():
-#     agents = {'mouse': build_model()}
-#     init = tf.global_variables_initializer()
-#     with tf.Session() as sess:
-#         sess.run(init)
-#         e = 0.9
-#         acc_rs = {'mouse': 0.0}
-#         internal_state, current_s = reset()
-#         while True:
-#             agents_actions = {}
-#             for agent, params in agents.items():
-#                 current_a, current_q = sess.run([params['a'], params['q']], feed_dict={params['s']: current_s[agent]})
-#                 if np.random.random() <= e:
-#                     current_a = [np.random.randint(len(ACTIONS))]
-#                 agents_actions[agent] = {'current_a': current_a, 'current_q': current_q}
-#             agents_a = {agent: action['current_a'][0] for agent, action in agents_actions.items()}
-#             internal_state, next_ss, rs = step(agents_a, internal_state)
-#             print(internal_state, agents_a)
-#
-#             # for agent, reward in rs.items():
-#             #     acc_rs[agent] += reward
-#             # print(acc_rs)
-#
-#             for agent, next_s in next_ss.items():
-#                 params = agents[agent]
-#                 actions = agents_actions[agent]
-#                 next_q = sess.run(params['q'], feed_dict={params['s']: [next_s]})
-#                 max_next_q = np.max(next_q)
-#                 target_q = actions['current_q']
-#                 target_q[0, actions['current_a'][0]] = rs[agent] + GAMMA * max_next_q
-#                 sess.run(
-#                     params['train_step'],
-#                     feed_dict={params['s']: current_s[agent], params['next_state_q']: [target_q]}
-#                 )
-#                 params['current_s'] = next_s
-#                 e -= 0.0001
-#
-#
-# if __name__ == '__main__':
-#     main()
